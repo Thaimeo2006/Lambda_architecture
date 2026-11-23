@@ -1,0 +1,105 @@
+digraph LambdaPipeline {
+    graph [
+        rankdir=LR,
+        dpi=220,
+        pad="0.20",
+        nodesep="0.30",
+        ranksep="0.42",
+        fontname="Helvetica",
+        fontsize=11,
+        bgcolor="#FFFFFF",
+        splines=true
+    ];
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Helvetica",
+        fontsize=10,
+        margin="0.14,0.09",
+        penwidth=1.4
+    ];
+    edge [
+        fontname="Helvetica",
+        fontsize=8.5,
+        color="#475569",
+        penwidth=1.3,
+        arrowsize=0.75
+    ];
+
+    subgraph cluster_ingest {
+        label="Ingestion";
+        style="rounded,filled";
+        color="#CBD5E1";
+        fillcolor="#F8FAFC";
+        fontsize=10;
+
+        tlc [label="NYC TLC Data\n(25k events,\nseed=42)", fillcolor="#E2E8F0", color="#64748B"];
+        producer [label="producer.py\n(seq=1..N,\nUTC produced_at)", fillcolor="#DBEAFE", color="#2563EB"];
+        kafka [label="Kafka: events\n(1 partition,\nport 9092)", fillcolor="#FEF3C7", color="#D97706"];
+    }
+
+    subgraph cluster_batch {
+        label="Batch Layer (Arch A & B)";
+        style="rounded,filled";
+        color="#93C5FD";
+        fillcolor="#EFF6FF";
+        fontsize=10;
+
+        raw [label="raw_consumer.py\n(atomic\nos.replace)", fillcolor="#DBEAFE", color="#2563EB"];
+        parquet [label="Immutable\nParquet Files\n(raw_parquet/)", fillcolor="#E0E7FF", color="#4F46E5"];
+        batch [label="batch_job.py\n(PySpark 30s,\nwatermark H)", fillcolor="#DBEAFE", color="#1D4ED8"];
+    }
+
+    subgraph cluster_speed {
+        label="Speed Layer (Arch B only)";
+        style="rounded,filled";
+        color="#FDBA74";
+        fillcolor="#FFF7ED";
+        fontsize=10;
+
+        speed [label="speed_job.py\n(Spark Structured Streaming,\ncheckpoint + upsert)", fillcolor="#FFEDD5", color="#EA580C"];
+    }
+
+    subgraph cluster_serving {
+        label="Serving Layer (PostgreSQL 15)";
+        style="rounded,filled";
+        color="#86EFAC";
+        fillcolor="#F0FDF4";
+        fontsize=10;
+
+        pg_batch [label="batch_views &\nwatermark_meta (H)", fillcolor="#DCFCE7", color="#16A34A"];
+        pg_speed [label="speed_events\n(PK: event_id)", fillcolor="#DCFCE7", color="#16A34A"];
+        views [label="v_q1_category & v_q2_total\nBatchAgg(seq<=H) +\nSpeedEvents(seq>H)", fillcolor="#BBF7D0", color="#15803D"];
+    }
+
+    subgraph cluster_bench {
+        label="Monitor & Output";
+        style="rounded,filled";
+        color="#CBD5E1";
+        fillcolor="#F8FAFC";
+        fontsize=10;
+
+        monitor [label="monitor.py\n(poll 0.25s, Q1/Q2\n& ground truth)", fillcolor="#EDE9FE", color="#7C3AED"];
+        metrics [label="metrics/\nCSVs & Charts", fillcolor="#F3E8FF", color="#7C3AED"];
+    }
+
+    tlc -> producer;
+    producer -> kafka [label="JSON"];
+    producer -> monitor [style=dashed, label="ground truth JSONL", constraint=false];
+
+    kafka -> raw;
+    raw -> parquet;
+    parquet -> batch;
+    batch -> pg_batch [label="1 tx"];
+
+    kafka -> speed [label="Arch B"];
+    speed -> pg_speed [label="idempotent\nupsert"];
+
+    pg_batch -> views;
+    pg_speed -> views;
+
+    views -> monitor [label="Q1/Q2 +\nvisible_at"];
+    monitor -> metrics;
+    batch -> metrics [style=dashed, label="batch_cost", constraint=false];
+    speed -> metrics [style=dashed, label="speed_cost", constraint=false];
+}

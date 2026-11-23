@@ -1,0 +1,60 @@
+=== 1. DOCKER CONTAINERS ===
+NAMES             IMAGE                STATUS          PORTS
+lambda_kafka      apache/kafka:3.7.0   Up 49 seconds   127.0.0.1:9092->9092/tcp
+lambda_postgres   postgres:15-alpine   Up 50 seconds   127.0.0.1:5432->5432/tcp
+
+=== 2. UNIT TESTS ===
+test_partial_json_line_is_not_lost_or_crashed (test_pipeline.TestMonitorHelpers.test_partial_json_line_is_not_lost_or_crashed) ... ok
+test_sampling_skips_warmup_and_spreads_across_active_window (test_pipeline.TestMonitorHelpers.test_sampling_skips_warmup_and_spreads_across_active_window) ... ok
+test_views_deduplicate_at_watermark (test_pipeline.TestServingViews.test_views_deduplicate_at_watermark) ... ok
+test_aggregate_preserves_opposite_sign_errors_and_batch_avg (test_pipeline.TestSuiteAggregation.test_aggregate_preserves_opposite_sign_errors_and_batch_avg) ... ok
+test_is_valid_completed_run_rejects_failed_or_unseen (test_pipeline.TestSuiteAggregation.test_is_valid_completed_run_rejects_failed_or_unseen) ... ok
+test_contiguous_gap_overlap_and_ignored_files (test_pipeline.TestWatermark.test_contiguous_gap_overlap_and_ignored_files) ... ok
+test_empty_and_missing_dir (test_pipeline.TestWatermark.test_empty_and_missing_dir) ... ok
+test_raw_consumer_flush_matches_watermark_parser (test_pipeline.TestWatermark.test_raw_consumer_flush_matches_watermark_parser) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.128s
+
+OK
+[Aggregator] Saved raw run summaries to /tmp/tmpentc462e/summary_all_runs.csv
+[Aggregator] Saved aggregated table to /tmp/tmpentc462e/summary_aggregated.csv
+
+=== 3. POSTGRESQL Q1 / Q2 & SAMPLE FRESHNESS CHECK (sql/queries.sql) ===
+ category | total_count | total_sum_cents 
+----------+-------------+-----------------
+ ZONE_0   |        1558 |         3977906
+ ZONE_1   |        1232 |         2868955
+ ZONE_2   |        1797 |         7938624
+ ZONE_3   |        1283 |         2961411
+ ZONE_4   |         892 |         1997096
+ ZONE_5   |         184 |          433043
+ ZONE_6   |        1239 |         2805785
+ ZONE_7   |        1013 |         2109017
+ ZONE_8   |        1607 |         5514026
+ ZONE_9   |        1196 |         2663188
+(10 rows)
+
+ system_total_count | system_total_sum_cents | current_batch_h 
+--------------------+------------------------+-----------------
+              12001 |               33269051 |           12001
+(1 row)
+
+         event_id         | seq |          produced_at          |       first_visible_at       | freshness_ms  
+--------------------------+-----+-------------------------------+------------------------------+---------------
+ 6210196d45364287ee14e30d |   1 | 2026-11-19 22:15:27.980034+00 | 2026-11-19 22:15:41.76155+00 | 13781.5160000
+ 6f901d9cd794a08a30671d93 |   2 | 2026-11-19 22:15:28.083078+00 | 2026-11-19 22:15:41.76155+00 | 13678.4720000
+ 9885b4c3366187535ce4daad |   3 | 2026-11-19 22:15:28.083203+00 | 2026-11-19 22:15:41.76155+00 | 13678.3470000
+ 7f60d942ce87b575a54bfa2a |   4 | 2026-11-19 22:15:28.083294+00 | 2026-11-19 22:15:41.76155+00 | 13678.2560000
+ 3317494b97084a79d30a5529 |   5 | 2026-11-19 22:15:28.083363+00 | 2026-11-19 22:15:41.76155+00 | 13678.1870000
+ 63ed1403ee7ef5c38ce26376 |   6 | 2026-11-19 22:15:28.083432+00 | 2026-11-19 22:15:41.76155+00 | 13678.1180000
+ 51513d5b2ff48fb7c38bbce9 |   7 | 2026-11-19 22:15:28.083489+00 | 2026-11-19 22:15:41.76155+00 | 13678.0610000
+ 501d9993d1f9fa1c437c6daf |   8 | 2026-11-19 22:15:28.08354+00  | 2026-11-19 22:15:41.76155+00 | 13678.0100000
+ 6461a5317c79d39cd5b10cb5 |   9 | 2026-11-19 22:15:28.083597+00 | 2026-11-19 22:15:41.76155+00 | 13677.9530000
+ a4f2aa46280e84e43df21f12 |  10 | 2026-11-19 22:15:28.083652+00 | 2026-11-19 22:15:41.76155+00 | 13677.8980000
+(10 rows)
+
+
+=== 4. GROUND TRUTH & 16-RUN SUITE EXACTNESS VERIFICATION ===
+Live PostgreSQL vs Ground Truth: count=12001/12001 (diff=0), sum_cents=33269051/33269051 (diff=0), H=12001 [MATCH]
+All 16/16 benchmark runs (E1-E5): is_correct=True, max_abs_count_diff=0, max_abs_sum_diff=0, max_unseen=0 [PASS]

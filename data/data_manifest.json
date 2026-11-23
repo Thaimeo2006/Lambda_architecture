@@ -1,0 +1,18 @@
+{
+  "source_url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet",
+  "download_timestamp_utc": "2026-11-19T20:28:25.999840+00:00",
+  "raw_file_name": "data/yellow_tripdata_2024-01.parquet",
+  "raw_file_sha256": "c4d59da7bbc8abaeeeb1727947ee93d9891a71acb42854bd80db1571b2030510",
+  "total_input_rows": 2964624,
+  "valid_rows_after_cleaning": 2861626,
+  "rejected_rows": 102998,
+  "sampled_rows_for_replay": 25000,
+  "random_seed": 42,
+  "cleaning_rules": [
+    "Drop rows with NULL in tpep_pickup_datetime, PULocationID, or total_amount",
+    "Filter 0 < total_amount <= 1000.0 USD and trip_distance > 0",
+    "Filter PULocationID in valid NYC taxi zone range [1, 263]",
+    "Convert total_amount to integer amount_cents = round(total_amount * 100)",
+    "Map PULocationID to 10 categories: ZONE_0 through ZONE_9"
+  ]
+}
